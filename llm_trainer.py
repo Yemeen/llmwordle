@@ -1,10 +1,12 @@
 # STREAMLIT Part
 import streamlit as st
-import random, re, time
+import random
+import re
+import time
 
 from datasets import load_dataset
 
-dataset = load_dataset("Open-Orca/OpenOrca")
+dataset = load_dataset("Open-Orca/OpenOrca", split="train")
 
 
 def replace_random_word(text, replacement="<BLANK>"):
@@ -26,25 +28,28 @@ def replace_random_word(text, replacement="<BLANK>"):
     # Return the replaced word and the modified text
     return replaced_word, modified_text
 
+
 def pick_random_prompt():
     while True:
         # Randomly pick a data point
-        datapt = random.choice(dataset['train'])
+        datapt = random.choice(dataset)
 
         # If 'question' is shorter than 273 characters
         if len(datapt['question']) < 273:
 
             # Replace random word
-            replaced_word, modified_text = replace_random_word(datapt['question'])
+            replaced_word, modified_text = replace_random_word(
+                datapt['question'])
             response = datapt['response']
             # Return the results
             return replaced_word, modified_text, response
+
 
 def check_guess(secret_word, guess):
     # Initialize a list of 'gray' for each letter in the guess.
     result = []
     for n in range(len(guess)):
-        result.append({'letter':guess[n], 'color':'gray'})
+        result.append({'letter': guess[n], 'color': 'gray'})
 
     # Initialize a list to keep track of which letters in the secret word have been used.
     used = [False] * len(secret_word)
@@ -58,12 +63,13 @@ def check_guess(secret_word, guess):
 
     # Then, check for letters in the wrong position.
     for l in range(len(guess)):
-        if result[l]['color'] == 'gray'and guess[l] in secret_word and not used[secret_word.index(guess[l])]:
+        if result[l]['color'] == 'gray' and guess[l] in secret_word and not used[secret_word.index(guess[l])]:
             # The letter is correct but in the wrong position.
             result[l]['color'] = 'yellow'
             used[secret_word.index(guess[l])] = True
 
     return result
+
 
 def generate_feedback_html(feedback, guess):
     # Encapsulate the feedback display in a function for reuse
@@ -84,6 +90,7 @@ def sanitize_input(input_string):
     else:
         return ""
 
+
 def message_html(msg, color='gray'):
     return f"""
     <div style="
@@ -96,6 +103,7 @@ def message_html(msg, color='gray'):
         {msg}
     </div>
     """
+
 
 def main():
     st.title('LLM Wordle')
@@ -123,7 +131,7 @@ def main():
 
     # Handle play again logic.
     if st.session_state.game_over:
-        if game_col.button("Play again? click twice" ):
+        if game_col.button("Play again? click twice"):
             st.session_state.game_over = False
             replaced_word, modified_prompt, response = pick_random_prompt()
             st.session_state.secret_word = replaced_word
@@ -132,15 +140,17 @@ def main():
             st.session_state.guesses = []
             st.session_state.feedbacks = []
             st.session_state.chat_history = []
-            st.session_state.input_key = "input" + str(random.randint(0, 1000000))
+            st.session_state.input_key = "input" + \
+                str(random.randint(0, 1000000))
 
     # Check if game is still ongoing.
     if not st.session_state.game_over:
         # Allow the user to enter a guess.
         game_col.write(st.session_state.prompt)
-        guess = game_col.text_input("Enter your guess", key=st.session_state.input_key)
+        guess = game_col.text_input(
+            "Enter your guess", key=st.session_state.input_key)
         guess = sanitize_input(guess)  # Sanitize the user input
-        
+
         chat_col.markdown("## Response")
         chat_col.write(st.session_state.response)
 
@@ -153,7 +163,8 @@ def main():
             feedback = check_guess(st.session_state.secret_word, guess)
             st.session_state.guesses.append(guess)
             st.session_state.feedbacks.append(feedback)
-            st.session_state.input_key = "input" + str(random.randint(0, 1000000))
+            st.session_state.input_key = "input" + \
+                str(random.randint(0, 1000000))
 
         if guess == st.session_state.secret_word:
             game_col.write("You win!")
@@ -161,20 +172,22 @@ def main():
             if game_col.button("Next"):
                 pass
         elif len(st.session_state.guesses) >= 6:
-            game_col.write("You lost! the word was "+st.session_state.secret_word)
+            game_col.write("You lost! the word was " +
+                           st.session_state.secret_word)
             st.session_state.game_over = True
             if game_col.button("Next"):
                 pass
 
         # Display previous feedbacks
         for past_feedback, past_guess in zip(st.session_state.feedbacks, st.session_state.guesses):
-            past_feedback_html = generate_feedback_html(past_feedback, past_guess)
+            past_feedback_html = generate_feedback_html(
+                past_feedback, past_guess)
             game_col.markdown(past_feedback_html, unsafe_allow_html=True)
-        
+
         for message in st.session_state.chat_history:
-            chat_col.markdown(message_html(message, 'purple'), unsafe_allow_html=True)
-        
-        
+            chat_col.markdown(message_html(message, 'purple'),
+                              unsafe_allow_html=True)
+
 
 if __name__ == "__main__":
     main()
